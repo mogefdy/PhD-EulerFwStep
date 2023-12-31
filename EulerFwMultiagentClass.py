@@ -1,9 +1,12 @@
 import numpy as np
 from matplotlib import pyplot as plt
+import importlib
+import inspect
+
 
 class EulerForwardStepper:
 
-    def __init__(self, xmin:float = 0, xmax:float = 10, t_min:float = 0, t_max:float = 1.5, x_res:float = 500, t_res:float = 1, init_cond:np.array = None, stepper:str = "opinion_dynamic", torus:bool = False):
+    def __init__(self, xmin:float = 0, xmax:float = 10, t_min:float = 0, t_max:float = 1.5, x_res:float = 500, t_res:float = 1, init_cond:np.array = None, stepper:str = "opinion_dynamic", torus:bool = False, phi_val = 2):
         #assume init_cond is a vector of values. If init condition not given, assume fixed resolution
         
         self.curr_t = t_min
@@ -25,16 +28,14 @@ class EulerForwardStepper:
             self.init_cond = self.curr_cond
 
         self.trajectories = [self.curr_cond]
-        self.changes = []
 
-
+        my_mod = importlib.import_module("phis")
+        phi_functions = inspect.getmembers(my_mod, inspect.isfunction)
+        self.phi = phi_functions[phi_val-1][1]
 
         self.step_funcs = {"opinion_dynamic":self.opinion_dynamic}
         self.step_func = self.step_funcs[stepper]
         
-    def phi(self, x:float)->float:
-        return int(x<=1)
-    
     def opinion_dynamic(self, old_state:np.array, dt:float, phi):
         import IPython;IPython.embed
         change = np.zeros(len(old_state))

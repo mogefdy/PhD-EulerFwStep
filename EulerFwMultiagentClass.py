@@ -101,7 +101,11 @@ class EulerForwardStepper:
 
             for t in self.trajectories:
                 db = KMeans(n_clusters = n_clusters, max_iter = max_iter, tol = tol).fit(t.reshape(-1,1))
-                labels = db.labels_
+
+                idx = np.argsort(db.cluster_centers_.sum(axis=1))
+                lut = np.zeros_like(idx)
+                lut[idx] = np.arange(n_clusters)
+                labels = lut[db.labels_]
 
                 # Number of clusters in labels, ignoring noise if present.
                 n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)

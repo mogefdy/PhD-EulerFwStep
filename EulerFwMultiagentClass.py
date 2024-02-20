@@ -3,6 +3,7 @@ from matplotlib import pyplot as plt
 import importlib
 import inspect
 from sklearn.cluster import DBSCAN, KMeans
+from sklearn.metrics import silhouette_score
 
 
 class EulerForwardStepper:
@@ -78,11 +79,11 @@ class EulerForwardStepper:
             self.next_step()
             self.trajectories.append(self.curr_cond)
 
-    def clusters_each_step(self, eps = 0.5, min_samples = 10, algo = "DBSCAN", n_clusters = 4, max_iter=300, tol = 1e-4): #Only DBSCAN will generate n_clusters and n_noise. 
+    def clusters_each_step(self, eps = 0.5, min_samples = 10, algo = "DBSCAN", max_clusters = 5, max_iter=300, tol = 1e-4): #Only DBSCAN will generate n_noise. 
+        self.rolling_n_clusters = []
+        self.rolling_labels = []
         if algo=="DBSCAN":
-            self.rolling_n_clusters = []
             self.rolling_n_noise = []
-            self.rolling_labels = []
 
             for t in self.trajectories:
                 db = DBSCAN(eps = eps, min_samples = min_samples).fit(t.reshape(-1,1))
@@ -97,11 +98,14 @@ class EulerForwardStepper:
                 self.rolling_labels.append(labels)
 
         elif algo=="KMeans":
-            self.rolling_labels = []
+            sil_scores = np.zeros(max_clusters-1)
 
             for t in self.trajectories:
+                for i in range(2, max_clusters+1):
+                    db = KMeans(n_clusters = i, max_iter = max_iter, tol = tol).fit(t.reshape(-1,1))
+                    sil_scores[i-2] = silhouette_score(t.reshape(-1,1), db.labels_)
+                n_clusters = np.argmax(sil_scores)+2
                 db = KMeans(n_clusters = n_clusters, max_iter = max_iter, tol = tol).fit(t.reshape(-1,1))
-
                 idx = np.argsort(db.cluster_centers_.sum(axis=1))
                 lut = np.zeros_like(idx)
                 lut[idx] = np.arange(n_clusters)
@@ -112,6 +116,7 @@ class EulerForwardStepper:
                 n_noise_ = list(labels).count(-1)
 
                 self.rolling_labels.append(labels)
+                self.rolling_n_clusters.append(n_clusters)
         else: 
             print("No accepted algorithm was given. Please use either \"DBSCAN\" or \"KMeans\".")
 
